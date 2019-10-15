@@ -10,6 +10,12 @@ defmodule Cabbage do
     children = [
       Cabbage.Output
     ]
-    Supervisor.start_link(children, strategy: :one_for_one)
+    {:ok, pid} = Supervisor.start_link(children, strategy: :one_for_one)
+    {:ok, pid, pid}
+  end
+
+  def prep_stop(s_pid) do
+    Cabbage.Output.stop()
+    Supervisor.delete_child(s_pid, Cabbage.Output)
   end
 end

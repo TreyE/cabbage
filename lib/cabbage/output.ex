@@ -5,6 +5,10 @@ defmodule Cabbage.Output do
     GenServer.start_link(__MODULE__, [], name: __MODULE__)
   end
 
+  def stop() do
+    GenServer.stop(__MODULE__)
+  end
+
   @impl true
   def init(_) do
     format_module_list = Application.get_env(:cabbage, :formatters, [])
@@ -23,6 +27,12 @@ defmodule Cabbage.Output do
       m.status_event(event)
     end)
     {:reply, :ok, state}
+  end
+
+  @impl true
+  def handle_info(msg, state) do
+    IO.inspect(msg)
+    state
   end
 
   @impl true
