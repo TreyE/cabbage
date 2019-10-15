@@ -239,16 +239,67 @@ defmodule Cabbage.Feature do
             )
 
           def unquote(name)(exunit_state) do
+            try do
             Cabbage.Feature.Helpers.start_state(unquote(scenario.name), __MODULE__, exunit_state)
-
-            unquote(Enum.map(scenario.steps, &compile_step(&1, steps, scenario.name)))
+            Cabbage.Output.scenario_status(
+              {
+                :scenario_start,
+                {
+                  unquote(Macro.escape(Module.get_attribute(__MODULE__, :feature))),
+                  unquote(Macro.escape(scenario))
+                }
+              }
+            )
+            unquote(
+              Enum.map(Enum.with_index(scenario.steps), &compile_step(&1, steps, Module.get_attribute(__MODULE__, :feature), scenario, scenario.name))
+            )
+            after
+            Cabbage.Output.scenario_status(
+              {
+                :scenario_end,
+                {
+                  unquote(Macro.escape(Module.get_attribute(__MODULE__, :feature))),
+                  unquote(Macro.escape(scenario))
+                }
+              }
+            )
+            end
           end
         end
       end
-    end)
+    end) |>
+    Enum.concat(
+      [
+        quote do
+          ExUnit.Callbacks.setup_all do
+            Cabbage.Output.scenario_status(
+              {
+                :feature_start,
+                unquote(Macro.escape(Module.get_attribute(env.module, :feature)))
+              }
+            )
+            ExUnit.Callbacks.on_exit(fn() ->
+              Cabbage.Output.scenario_status(
+                {
+                  :feature_end,
+                  unquote(Macro.escape(Module.get_attribute(env.module, :feature)))
+                }
+              )
+            end)
+          end
+        end
+      ]
+    )
   end
 
-  def compile_step(step, steps, scenario_name) when is_list(steps) do
+  @spec compile_step(
+          {atom | %{__struct__: atom | <<_::56, _::_*8>>, doc_string: any, table_data: any, text: binary}, any},
+          maybe_improper_list,
+          any,
+          any,
+          any
+        ) :: {:with, [{:generated, true}, ...], [[{any, any}, ...] | {:<-, [...], [...]}, ...]}
+  def compile_step({step, step_index}, steps, feature, scenario, scenario_name) when is_list(steps) do
     step_type =
       step.__struct__
       |> Module.split()
@@ -256,13 +307,16 @@ defmodule Cabbage.Feature do
 
     step
     |> find_implementation_of_step(steps)
-    |> compile(step, step_type, scenario_name)
+    |> compile(step, step_type, step_index, feature, scenario, scenario_name)
   end
 
   defp compile(
          {:{}, _, [regex, vars, state_pattern, block, metadata]},
          step,
          step_type,
+         step_index,
+         feature,
+         scenario,
          scenario_name
        ) do
     {regex, _} = Code.eval_quoted(regex)
@@ -275,6 +329,18 @@ defmodule Cabbage.Feature do
       with {_type, unquote(vars)} <- {:variables, unquote(Macro.escape(named_vars))},
            {_type, state = unquote(state_pattern)} <-
              {:state, Cabbage.Feature.Helpers.fetch_state(unquote(scenario_name), __MODULE__)} do
+        Cabbage.Output.scenario_status(
+          {
+            :step_start,
+            {
+              unquote(Macro.escape(feature)),
+              unquote(Macro.escape(scenario)),
+              unquote(step_type),
+              unquote(step.text),
+              unquote(step_index)
+            }
+          }
+        )
         new_state =
           case unquote(block) do
             {:ok, new_state} -> Map.merge(state, new_state)
@@ -293,6 +359,19 @@ defmodule Cabbage.Feature do
           IO.ANSI.green(),
           unquote(step.text)
         ])
+
+        Cabbage.Output.scenario_status(
+          {
+            :step_end,
+            {
+              unquote(Macro.escape(feature)),
+              unquote(Macro.escape(scenario)),
+              unquote(step_type),
+              unquote(step.text),
+              unquote(step_index)
+            }
+          }
+        )
       else
         {type, state} ->
           metadata = unquote(Macro.escape(metadata))
@@ -308,7 +387,7 @@ defmodule Cabbage.Feature do
     end
   end
 
-  defp compile(_, step, step_type, _scenario_name) do
+  defp compile(_, step, step_type, _step_index, _feature, _scenario, _scenario_name) do
     extra_vars = %{table: step.table_data, doc_string: step.doc_string}
 
     raise MissingStepError, step_text: step.text, step_type: step_type, extra_vars: extra_vars
