@@ -5,6 +5,7 @@ defmodule Cabbage.Output.StatusEvent do
                         feature_end |
                         scenario_start |
                         scenario_end |
+                        scenario_error |
                         step_start |
                         step_end
 
@@ -14,6 +15,7 @@ defmodule Cabbage.Output.StatusEvent do
   @type feature_end :: {:feature_end, Gherkin.Elements.Feature.t}
   @type scenario_start :: {:scenario_start, {Gherkin.Elements.Feature.t, Gherkin.Elements.Scenario.t}}
   @type scenario_end :: {:scenario_end, {Gherkin.Elements.Feature.t, Gherkin.Elements.Scenario.t}}
+  @type scenario_error :: {:scenario_error, {Gherkin.Elements.Feature.t, Gherkin.Elements.Scenario.t, any()}}
   @type step_start :: {
     :step_start,
     {
@@ -21,7 +23,8 @@ defmodule Cabbage.Output.StatusEvent do
       Gherkin.Elements.Scenario.t,
       any,
       any,
-      integer
+      integer,
+      any
     }
   }
   @type step_end :: {

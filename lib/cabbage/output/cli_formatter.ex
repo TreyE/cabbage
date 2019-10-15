@@ -81,8 +81,8 @@ defmodule Cabbage.Output.CliFormatter do
     case CliFormatterState.incomplete_scenarios(state, feature) do
       nil -> :ok
       a -> Enum.each(a, fn(a) ->
-        {_, {step_type, step_text}} = CliFormatterState.step_for_scenario(state, feature, a)
-        IO.puts(["    ", IO.ANSI.red(), step_type, " ", step_text, IO.ANSI.default_color()])
+        {_, {step_type, step_text,step_meta}} = CliFormatterState.step_for_scenario(state, feature, a)
+        format_step_error(step_type, step_text, step_meta, nil)
       end)
     end
     state
@@ -100,17 +100,27 @@ defmodule Cabbage.Output.CliFormatter do
   def scenario_end(state, {_, {feature, scenario}}) do
     case CliFormatterState.incomplete_step(state, feature, scenario) do
       nil -> :ok
-      {_, {step_type, step_text}} ->
-        IO.puts(["    ", IO.ANSI.red(), step_type, " ", step_text, IO.ANSI.default_color()])
+      {_, {step_type, step_text,step_meta}} -> format_step_error(step_type, step_text, step_meta, nil)
     end
     state
     |> CliFormatterState.pop_scenario(feature,scenario)
   end
 
   @impl true
-  def step_start(state, {_, {feature, scenario, step_type, step_text, step_index}}) do
+  def scenario_error(state, {_, {feature, scenario, error}}) do
+    case CliFormatterState.incomplete_step(state, feature, scenario) do
+      nil -> :ok
+      {_, {step_type, step_text,step_meta}} ->
+        format_step_error(step_type, step_text, step_meta, error)
+    end
     state
-    |> CliFormatterState.enqueue_step(feature, scenario, {step_type, step_text}, step_index)
+    |> CliFormatterState.pop_scenario(feature,scenario)
+  end
+
+  @impl true
+  def step_start(state, {_, {feature, scenario, step_type, step_text, step_index, step_meta}}) do
+    state
+    |> CliFormatterState.enqueue_step(feature, scenario, {step_type, step_text, step_meta}, step_index)
   end
 
   @impl true
@@ -118,5 +128,46 @@ defmodule Cabbage.Output.CliFormatter do
     IO.puts(["    ", IO.ANSI.green(), step_type, " ", step_text, IO.ANSI.default_color()])
     state
     |> CliFormatterState.pop_step(feature, scenario)
+  end
+
+  defp format_step_error(step_type, step_text,step_meta, nil) do
+    print_step_error_and_meta(step_type, step_text, step_meta)
+  end
+
+  defp format_step_error(step_type, step_text,step_meta, error) do
+    print_step_error_and_meta(step_type, step_text, step_meta)
+    case error do
+      %ExUnit.AssertionError{} ->
+        print_indented_error(ExUnit.Formatter.format_assertion_error(error))
+      a ->
+        print_indented_error(Exception.format(:error, a))
+    end
+  end
+
+  defp print_step_error_and_meta(step_type, step_text,step_meta) do
+    IO.puts(["    ", IO.ANSI.red(), step_type, " ", step_text, IO.ANSI.default_color()])
+    IO.puts([
+      "      ",
+      IO.ANSI.red(),
+      step_meta.file,
+      ":",
+      Integer.to_string(step_meta.line),
+      IO.ANSI.default_color()
+    ])
+  end
+
+  defp print_indented_error(error_lines) do
+    {:ok, string_io} = StringIO.open(error_lines)
+    stream = IO.stream(string_io, :line)
+    errors_lines = (stream
+    |> Enum.map(fn(data) ->
+      "      " <> data
+    end))
+    StringIO.close(string_io)
+    IO.write([
+      IO.ANSI.red(),
+      errors_lines,
+      IO.ANSI.default_color()
+    ])
   end
 end

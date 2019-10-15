@@ -45,6 +45,11 @@ defmodule Cabbage.Output.Formatter do
         {:reply, :ok, new_state}
       end
 
+      def handle_call({:scenario_error, _} = event, _from, state) do
+        new_state = scenario_error(state, event)
+        {:reply, :ok, new_state}
+      end
+
       def handle_call({:step_start, _} = event, _from, state) do
         new_state = step_start(state, event)
         {:reply, :ok, new_state}
@@ -92,6 +97,10 @@ defmodule Cabbage.Output.Formatter do
         state
       end
 
+      def scenario_error(state, _) do
+        state
+      end
+
       def step_start(state, _) do
         state
       end
@@ -107,6 +116,7 @@ defmodule Cabbage.Output.Formatter do
         feature_end: 2,
         scenario_start: 2,
         scenario_end: 2,
+        scenario_error: 2,
         step_start: 2,
         step_end: 2
       )
@@ -120,6 +130,7 @@ defmodule Cabbage.Output.Formatter do
   @callback feature_end(state :: any(), event :: Cabbage.Output.StatusEvent.feature_end) :: any()
   @callback scenario_start(state :: any(), event :: Cabbage.Output.StatusEvent.scenario_start) :: any()
   @callback scenario_end(state :: any(), event :: Cabbage.Output.StatusEvent.scenario_end) :: any()
+  @callback scenario_error(state :: any(), event :: Cabbage.Output.StatusEvent.scenario_error) :: any()
   @callback step_start(state :: any(), event :: Cabbage.Output.StatusEvent.step_start) :: any()
   @callback step_end(state :: any(), event :: Cabbage.Output.StatusEvent.step_end) :: any()
 end

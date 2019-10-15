@@ -253,7 +253,21 @@ defmodule Cabbage.Feature do
             unquote(
               Enum.map(Enum.with_index(scenario.steps), &compile_step(&1, steps, Module.get_attribute(__MODULE__, :feature), scenario, scenario.name))
             )
-            after
+            rescue
+              a ->
+                scenario_info = Cabbage.Feature.Helpers.fetch_state(unquote(scenario.name), __MODULE__)
+                Cabbage.Output.scenario_status(
+                  {
+                    :scenario_error,
+                    {
+                      unquote(Macro.escape(Module.get_attribute(__MODULE__, :feature))),
+                      unquote(Macro.escape(scenario)),
+                      a
+                    }
+                  }
+                )
+                reraise a, __STACKTRACE__
+            end
             Cabbage.Output.scenario_status(
               {
                 :scenario_end,
@@ -263,7 +277,6 @@ defmodule Cabbage.Feature do
                 }
               }
             )
-            end
           end
         end
       end
@@ -337,7 +350,8 @@ defmodule Cabbage.Feature do
               unquote(Macro.escape(scenario)),
               unquote(step_type),
               unquote(step.text),
-              unquote(step_index)
+              unquote(step_index),
+              unquote(Macro.escape(metadata))
             }
           }
         )
