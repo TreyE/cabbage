@@ -118,14 +118,14 @@ defmodule Cabbage.Output.CliFormatter do
   end
 
   @impl true
-  def step_start(state, {_, {feature, scenario, step_type, step_text, step_index, step_meta}}) do
+  def step_start(state, {_, {feature, scenario, step_type, step, step_index, step_meta}}) do
     state
-    |> CliFormatterState.enqueue_step(feature, scenario, {step_type, step_text, step_meta}, step_index)
+    |> CliFormatterState.enqueue_step(feature, scenario, {step_type, step.text, step_meta}, step_index)
   end
 
   @impl true
-  def step_end(state, {_, {feature, scenario, step_type, step_text, _step_index}}) do
-    IO.puts(["    ", IO.ANSI.green(), step_type, " ", step_text, IO.ANSI.default_color()])
+  def step_end(state, {_, {feature, scenario, step_type, step, _step_index}}) do
+    IO.puts(["    ", IO.ANSI.green(), step_type, " ", step.text, IO.ANSI.default_color()])
     state
     |> CliFormatterState.pop_step(feature, scenario)
   end

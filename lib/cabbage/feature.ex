@@ -349,7 +349,7 @@ defmodule Cabbage.Feature do
               unquote(Macro.escape(feature)),
               unquote(Macro.escape(scenario)),
               unquote(step_type),
-              unquote(step.text),
+              unquote(Macro.escape(step)),
               unquote(step_index),
               unquote(Macro.escape(metadata))
             }
@@ -381,7 +381,7 @@ defmodule Cabbage.Feature do
               unquote(Macro.escape(feature)),
               unquote(Macro.escape(scenario)),
               unquote(step_type),
-              unquote(step.text),
+              unquote(Macro.escape(step)),
               unquote(step_index)
             }
           }

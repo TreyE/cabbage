@@ -4,14 +4,22 @@ defmodule Cabbage.Feature.Loader do
   def load_from_file(path) do
     "#{Cabbage.base_path()}#{path}"
     |> File.read!()
-    |> load_from_string()
+    |> load_from_string(path)
   end
 
-  def load_from_string(string) do
+  def load_from_string(string, path \\ "") do
     string
     |> Gherkin.parse()
     |> Gherkin.flatten()
+    |> fix_feature_path(path)
     |> fix_step_types()
+  end
+
+  defp fix_feature_path(%Feature{} = feature, path) do
+    %Feature{
+      feature |
+        file: path
+    }
   end
 
   defp fix_step_types(%Feature{scenarios: scenarios} = feature) do
